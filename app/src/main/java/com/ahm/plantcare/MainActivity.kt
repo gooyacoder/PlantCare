@@ -1,21 +1,14 @@
 package com.ahm.plantcare
 
 import android.annotation.SuppressLint
-import android.app.AlarmManager
-import android.app.AlarmManager.RTC_WAKEUP
 import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.Typeface
 import android.os.Bundle
 import android.view.View
 import android.widget.ListView
-import android.widget.TextView
 import androidx.appcompat.app.ActionBar
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.AlarmManagerCompat.setExact
-import androidx.core.view.iterator
-import androidx.core.view.size
 import androidx.work.WorkManager
 import kotlinx.android.synthetic.main.row_item.*
 import java.util.*
@@ -36,7 +29,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         getSupportActionBar()?.setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM);
         getSupportActionBar()?.setCustomView(R.layout.app_title);
-
         prepageUI()
     }
 
