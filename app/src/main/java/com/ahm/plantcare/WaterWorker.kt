@@ -1,31 +1,39 @@
 package com.ahm.plantcare
 
 
-import android.R
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
-import androidx.core.app.NotificationCompat
-import androidx.work.Worker
-import androidx.work.WorkerParameters
+import androidx.work.*
+import java.util.concurrent.TimeUnit
 
 class WaterWorker(appContext: Context, workerParams: WorkerParameters):
     Worker(appContext, workerParams) {
 
 
     override fun doWork(): Result {
-        val builder: NotificationCompat.Builder = NotificationCompat.Builder(applicationContext)
-            .setSmallIcon(R.drawable.ic_dialog_info)
-            .setContentTitle(inputData.getString("plant_name"))
-            .setContentText("آبیاری")
-            .setAutoCancel(true)
-            .setContentIntent(PendingIntent.getActivity
-                (applicationContext, 0, Intent(), 0))
+        val db = FertilizerDatabaseHelper(applicationContext)
+        val plant_name = inputData.getString("plant_name")
+        val days = inputData.getString("days")
+        val data = Data.Builder()
+        data.putString("plant_name", plant_name)
 
-        // Add as notification
-        val manager: NotificationManager? = this.applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager!!.notify(NotificationID.iD, builder.build())
+        val myWorkBuilder = PeriodicWorkRequest.Builder(
+            WaterWorker2::class.java,
+            days!!.toLong(),
+            TimeUnit.DAYS
+        )
+        val constraints: Constraints = Constraints.Builder()
+            .build()
+        val myWork = myWorkBuilder
+            .setConstraints(constraints)
+            .setInputData(data.build())
+            .build()
+        val workManager = WorkManager.getInstance(applicationContext)
+        val work_id = myWork.id
+        workManager.enqueueUniquePeriodicWork("waterworker2",
+            ExistingPeriodicWorkPolicy.KEEP, myWork)
+        db.addWateringEntry(plant_name, days, work_id.toString())
+        db.close()
+
 
         return Result.success()
     }

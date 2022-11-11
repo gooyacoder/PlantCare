@@ -1,7 +1,6 @@
 package com.ahm.plantcare
 
 import android.app.AlarmManager
-import android.app.AlarmManager.RTC_WAKEUP
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -9,13 +8,10 @@ import android.os.Bundle
 import android.view.View
 import android.widget.AbsListView.CHOICE_MODE_SINGLE
 import android.widget.ArrayAdapter
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContentProviderCompat.requireContext
-import androidx.work.Data
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
-import androidx.work.WorkRequest
+import androidx.work.*
 import kotlinx.android.synthetic.main.activity_edit_plant.*
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -27,8 +23,9 @@ class EditPlantActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_edit_plant)
-        val items = arrayOf("آهن", "۲۰-۲۰-۲۰", "۱۲-۱۲-۳۶", "۱۰-۵۲-۱۰",
-            "هیومیک اسید", "قارچ کش", "اسید آمینه", "جلبک دریایی")
+        val items = arrayOf( "20-20-20", "12-12-36", "10-52-10", "3-11-38",
+            "هیومیک اسید", "قارچ کش", "اسید آمینه", "جلبک دریایی", "سولفات منیزیم",
+            "سوپر فسفات", "میکرونوترینت", "آهن")
         val adapter: ArrayAdapter<Any?> = ArrayAdapter<Any?>(
             this, R.layout.custom_spinner_view, items)
         fertilizerDropDownSpinner.setAdapter(adapter)
@@ -50,65 +47,48 @@ class EditPlantActivity : AppCompatActivity() {
     }
 
     fun fertilizerBtnClicked(view: View) {
-        var db = FertilizerDatabaseHelper(this)
-        var plant_name = intent.getStringExtra("plantName")
-        var fertilizer_name = fertilizerDropDownSpinner.selectedItem.toString()
-        var days: Long = fertilizing_days.text.toString().toLong()
-        val id = NotificationID.iD
-        setAlarmFertilizer(plant_name!!, fertilizer_name!!, day_to_millisec(days), id)
-        db.addFertilizer(plant_name, fertilizer_name, days.toString(), id.toString())
-        db.close()
-
-        updateFertilizerList()
-
-    }
-
-    private fun setAlarmFertilizer(plantName: String, fertilizer: String, repeat: Long, id: Int) {
-
-
-        // creating alarmManager instance
-        val alarmManager = this.applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        // adding intent and pending intent to go to AlarmReceiver Class in future
-        val intent = Intent(applicationContext, AlarmReceiver::class.java)
-        intent.putExtra("plant_name", plantName)
-        intent.putExtra("fertilizer", fertilizer)
-        val pendingIntent = PendingIntent.getBroadcast(applicationContext,
-            id, intent, PendingIntent.FLAG_IMMUTABLE)
-        // setting the alarm
-        alarmManager.setRepeating(RTC_WAKEUP, repeat, repeat, pendingIntent)
-    }
-
-    private fun setAlarm(plantName: String, repeat: Long, id: Int) {
-
-
-        // creating alarmManager instance
-        val alarmManager = this.applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        // adding intent and pending intent to go to AlarmReceiver Class in future
-        val intent = Intent(applicationContext, AlarmReceiver::class.java)
-        intent.putExtra("plant_name", plantName)
-        val pendingIntent = PendingIntent.getBroadcast(applicationContext,
-            id, intent, PendingIntent.FLAG_IMMUTABLE)
-        // when using setAlarmClock() it displays a notification until alarm rings and when pressed it takes us to mainActivity
-        val mainActivityIntent = Intent(applicationContext, MainActivity::class.java)
-        val basicPendingIntent = PendingIntent.getActivity(applicationContext,
-            id, mainActivityIntent, PendingIntent.FLAG_IMMUTABLE)
-        // setting the alarm
-        alarmManager.setRepeating(RTC_WAKEUP, repeat, repeat, pendingIntent)
-    }
-
-    fun day_to_millisec(days: Long) : Long{
-        return days*24*60*60*1000
+        val plant_name = intent.getStringExtra("plantName")
+        val fertilizer_name = fertilizerDropDownSpinner.selectedItem.toString()
+        val days: Long = fertilizing_days.text.toString().toLong()
+        val data = Data.Builder()
+        data.putString("plant_name", plant_name)
+        data.putString("fertilizer_name", fertilizer_name)
+        data.putString("days", days.toString())
+        val constraints: Constraints = Constraints.Builder()
+            .build()
+        val myFirstWorkBuilder = OneTimeWorkRequest.Builder(FertilizerWorker::class.java)
+            .setInitialDelay(days, TimeUnit.DAYS)
+            .setConstraints(constraints)
+            .setInputData(data.build())
+            .build()
+        val workManager = WorkManager.getInstance(applicationContext)
+        workManager.enqueue(myFirstWorkBuilder)
+        //updateFertilizerList()
+        Toast.makeText(applicationContext, "$fertilizer_name was successfully added.",
+                                Toast.LENGTH_LONG).show()
     }
 
     fun wateringBtnClicked(view: View) {
-        val db = FertilizerDatabaseHelper(this)
+        //val db = FertilizerDatabaseHelper(this)
         val plant_name = intent.getStringExtra("plantName")
         val days: Long = watering_days.text.toString().toLong()
-        val id = NotificationID.iD
-        setAlarm(plant_name!!, day_to_millisec(days), id)
-        db.addWateringEntry(plant_name, days.toString(), id.toString())
-        db.close()
-        updateCurrentWatering()
+        val data = Data.Builder()
+        data.putString("plant_name", plant_name)
+        data.putString("days", days.toString())
+        val constraints: Constraints = Constraints.Builder()
+            .build()
+        val myFirstWorkBuilder = OneTimeWorkRequest.Builder(WaterWorker::class.java)
+            .setInitialDelay(days, TimeUnit.DAYS)
+            .setConstraints(constraints)
+            .setInputData(data.build())
+            .build()
+        val workManager = WorkManager.getInstance(applicationContext)
+        workManager.enqueue(myFirstWorkBuilder)
+        if(days != null){
+            currentWatering.text = days.toString() + " روز "
+        }else{
+            currentWatering.text = ""
+        }
     }
 
     fun removeFertilizerBtnClicked(view: View) {
@@ -122,12 +102,8 @@ class EditPlantActivity : AppCompatActivity() {
                 getItem(fertilizer_list.checkedItemPosition)
                     .toString()
                 val fertilizer_id = db.getFertilizerId(plant_name, fertilizer_name)
-                val alarmManager = this.applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-                // adding intent and pending intent to go to AlarmReceiver Class in future
-                val intent = Intent(applicationContext, AlarmReceiver::class.java)
-                val pendingIntent = PendingIntent.getBroadcast(applicationContext,
-                    fertilizer_id!!.toInt(), intent, PendingIntent.FLAG_IMMUTABLE)
-                alarmManager.cancel(pendingIntent)
+                val fertilizerID = UUID.fromString(fertilizer_id)
+                WorkManager.getInstance(applicationContext).cancelWorkById(fertilizerID)
                 db.removeFertilizer(plant_name, fertilizer_name)
                 db.close()
                 updateFertilizerList()
@@ -177,12 +153,8 @@ class EditPlantActivity : AppCompatActivity() {
                 val plant_name = intent.getStringExtra("plantName")
                 val db = FertilizerDatabaseHelper(this)
                 val watering_id = db.getWateringId(plant_name)
-                val alarmManager = this.applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-                // adding intent and pending intent to go to AlarmReceiver Class in future
-                val intent = Intent(applicationContext, AlarmReceiver::class.java)
-                val pendingIntent = PendingIntent.getBroadcast(applicationContext,
-                    watering_id!!.toInt(), intent, PendingIntent.FLAG_IMMUTABLE)
-                alarmManager.cancel(pendingIntent)
+                val wateringID = UUID.fromString(watering_id)
+                WorkManager.getInstance(applicationContext).cancelWorkById(wateringID)
                 db.removeWatering(plant_name)
                 db.close()
                 updateCurrentWatering()

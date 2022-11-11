@@ -34,7 +34,7 @@
         android:layout_marginStart="85dp"
         android:layout_marginTop="16dp"
         android:layout_marginEnd="82dp"
-        android:background="#E0FAE1"
+        android:background="#FFECB2"
         android:ems="10"
         android:inputType="textPersonName"
         app:layout_constraintEnd_toEndOf="parent"
