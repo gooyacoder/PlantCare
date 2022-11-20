@@ -2,6 +2,7 @@ package com.ahm.plantcare
 
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.View
@@ -33,6 +34,9 @@ class AddPlantActivity : AppCompatActivity() {
     }
 
     fun addBtnClicked(view: View) {
+        if(imageBitmap == null){
+            imageBitmap = BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher);
+        }
         var image_byte_array = imageBitmap?.let { DbBitmapUtility.getBytes(it) }
         var db = DatabaseHelper(this)
         var plant_name:String? = name_text.text.toString()
